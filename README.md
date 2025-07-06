@@ -6,7 +6,7 @@
 
 Надеюсь на вашу поддержку, но если ее не будет, не обижусь :)
 
-Version: Samplifast_0.0.0.1A
+Version: Samplifast_0.0.0.1FULL
 
 by artyxyz101
 
