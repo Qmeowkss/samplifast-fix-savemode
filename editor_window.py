@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import (
     QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout,
-    QWidget, QSlider
+    QWidget, QSlider, QLabel, QFrame
 )
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -15,8 +15,8 @@ import track2_control as t2
 class AudioEditor(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Samplifast🎵")
-        self.setGeometry(100, 100, 1200, 700)
+        self.setWindowTitle("Samplifast 🎵")
+        self.setGeometry(100, 100, 1400, 800)
 
         self.tracks = [
             {"data": None, "sample_rate": None, "original_data": None, "volume": 1.0, "playing": False, "stream": None, "play_pointer": 0},
@@ -27,49 +27,75 @@ class AudioEditor(QMainWindow):
         self.track_canvases = []
 
         button_style = (
-            "QPushButton { background-color: black; color: white; "
+            "QPushButton { background-color: #2e2e2e; color: white; "
             "padding: 8px; font-weight: bold; border: 1px solid white; }"
         )
 
         main_layout = QHBoxLayout()
-        control_layout = QVBoxLayout()
+        left_panel = QVBoxLayout()
 
-        for i in range(2):
-            load_btn = QPushButton(f"Загрузить {i+1}")
-            load_btn.setStyleSheet(button_style)
-            load_btn.clicked.connect(lambda _, x=i: t1.load_audio(self, x) if x == 0 else t2.load_audio(self, x))
-            control_layout.addWidget(load_btn)
+        # --- Track 1 Controls ---
+        left_panel.addWidget(QLabel("🎚 Дорожка 1"))
+        for label, func in [
+            ("Загрузить", lambda: t1.load_audio(self, 0)),
+            ("Воспроизвести", lambda: mc.play_pause_track(self, 0)),
+        ]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(button_style)
+            btn.clicked.connect(func)
+            left_panel.addWidget(btn)
 
-            play_btn = QPushButton(f"Воспроизвести {i+1}")
-            play_btn.setStyleSheet(button_style)
-            play_btn.clicked.connect(lambda _, x=i: mc.play_pause_track(self, x))
-            control_layout.addWidget(play_btn)
+        slider1 = QSlider(Qt.Horizontal)
+        slider1.setMinimum(0)
+        slider1.setMaximum(100)
+        slider1.setValue(100)
+        slider1.valueChanged.connect(lambda value: mc.update_volume(self, 0, value))
+        left_panel.addWidget(slider1)
 
-            volume_slider = QSlider(Qt.Horizontal)
-            volume_slider.setMinimum(0)
-            volume_slider.setMaximum(100)
-            volume_slider.setValue(100)
-            volume_slider.valueChanged.connect(lambda value, x=i: mc.update_volume(self, x, value))
-            control_layout.addWidget(volume_slider)
+        left_panel.addWidget(self._divider())
 
-        play_all_btn = QPushButton("▶️ Все дорожки")
-        play_all_btn.setStyleSheet(button_style)
-        play_all_btn.clicked.connect(lambda: mc.play_pause_all(self))
-        self.play_all_button = play_all_btn
-        control_layout.addWidget(play_all_btn)
+        # --- Track 2 Controls ---
+        left_panel.addWidget(QLabel("🎚 Дорожка 2"))
+        for label, func in [
+            ("Загрузить", lambda: t2.load_audio(self, 1)),
+            ("Воспроизвести", lambda: mc.play_pause_track(self, 1)),
+        ]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(button_style)
+            btn.clicked.connect(func)
+            left_panel.addWidget(btn)
 
-        zoom_in_button = QPushButton("Увеличить")
-        zoom_in_button.setStyleSheet(button_style)
-        zoom_in_button.clicked.connect(self.zoom_in)
-        control_layout.addWidget(zoom_in_button)
+        slider2 = QSlider(Qt.Horizontal)
+        slider2.setMinimum(0)
+        slider2.setMaximum(100)
+        slider2.setValue(100)
+        slider2.valueChanged.connect(lambda value: mc.update_volume(self, 1, value))
+        left_panel.addWidget(slider2)
 
-        zoom_out_button = QPushButton("Уменьшить")
-        zoom_out_button.setStyleSheet(button_style)
-        zoom_out_button.clicked.connect(self.zoom_out)
-        control_layout.addWidget(zoom_out_button)
+        left_panel.addWidget(self._divider())
 
-        main_layout.addLayout(control_layout)
+        # --- Global Controls ---
+        left_panel.addWidget(QLabel("🎛 Общие"))
+        for label, func in [
+            ("▶️ Воспроизвести все", lambda: mc.play_pause_all(self)),
+            ("⬆️ Экспорт", lambda: mc.export_all(self)),
+            ("↩️ Undo", lambda: print("Undo")),
+            ("↪️ Redo", lambda: print("Redo")),
+            ("⚙️ Настройки", lambda: print("Настройки")),
+            ("🎛 Эффекты", lambda: print("Эффекты")),
+            ("🎵 Метроном", lambda: print("Метроном")),
+        ]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(button_style)
+            btn.clicked.connect(func)
+            left_panel.addWidget(btn)
 
+        left_container = QWidget()
+        left_container.setLayout(left_panel)
+        left_container.setFixedWidth(220)
+        left_container.setStyleSheet("background-color: #1c1c1c; color: white;")
+
+        # --- Waveform Display ---
         plot_layout = QVBoxLayout()
         for i in range(2):
             fig, ax = plt.subplots()
@@ -79,11 +105,15 @@ class AudioEditor(QMainWindow):
             self.track_axes.append(ax)
             self.track_canvases.append(canvas)
 
-        main_layout.addLayout(plot_layout)
+        plot_container = QWidget()
+        plot_container.setLayout(plot_layout)
+        plot_container.setStyleSheet("background-color: black;")
+
+        main_layout.addWidget(left_container)
+        main_layout.addWidget(plot_container)
 
         container = QWidget()
         container.setLayout(main_layout)
-        container.setStyleSheet("background-color: black;")
         self.setCentralWidget(container)
 
     def plot_track(self, index):
@@ -106,18 +136,9 @@ class AudioEditor(QMainWindow):
         ax.tick_params(axis='y', colors='white')
         canvas.draw()
 
-    def zoom_in(self):
-        for ax, canvas in zip(self.track_axes, self.track_canvases):
-            xlim = ax.get_xlim()
-            center = sum(xlim) / 2
-            span = (xlim[1] - xlim[0]) / 4
-            ax.set_xlim(center - span, center + span)
-            canvas.draw()
-
-    def zoom_out(self):
-        for ax, canvas in zip(self.track_axes, self.track_canvases):
-            xlim = ax.get_xlim()
-            center = sum(xlim) / 2
-            span = (xlim[1] - xlim[0])
-            ax.set_xlim(center - span, center + span)
-            canvas.draw()
+    def _divider(self):
+        divider = QFrame()
+        divider.setFrameShape(QFrame.HLine)
+        divider.setFrameShadow(QFrame.Sunken)
+        divider.setStyleSheet("color: grey;")
+        return divider
